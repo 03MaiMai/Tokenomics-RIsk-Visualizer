@@ -19,12 +19,7 @@ Features
 6. Customizable Parameters: Enables users to input custom wallet percentages and other parameters for manual analysis.
 
 Technical Details
-- Built with:
- - HTML5: Structure and layout
- - CSS3: Styling and animations
- - JavaScript: Core functionality and interactivity
- - Chart.js: Interactive charting capabilities
-
+- Built with: HTML5, CSS3, JavaScript, Chart.js
 - Data Sources: Solscan API for real-time token and holder data.
 - Responsive Design: Works on both desktop and mobile devices.
 
