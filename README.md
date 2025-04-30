@@ -1,4 +1,5 @@
 Tokenomics Risk Visualizer A RugCheck bounty tool to visualize tokenomics, profile wallet risks, and alert on suspicious patterns. Built with real Solscan data, it offers interactive charts (wallet distribution, price impact, liquidity, history), detailed risk scoring, and live alerts for insider dumps and liquidity shifts. Designed to empower users to spot rug pulls before they strike. 
+
 Setup 
 1. Open index.html in a browser. 
 2. Enter a Solana token address (e.g., CKfatsPMUf8SkiURsDXs7eK6GWb4Jsd6UDbs7twMCWxo) or manual %s.
