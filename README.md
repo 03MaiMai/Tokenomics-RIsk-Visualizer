@@ -10,13 +10,13 @@ Features
  - Wallet Distribution Pie Chart: Visualizes the percentage distribution of token holdings across different wallets.
  - Price Impact Over Time Line Chart: Tracks historical price impact percentages to identify volatility and potential manipulation.
  - Liquidity Timeline: Monitors changes in liquidity percentage over time to detect sudden withdrawals.
- - Wallet History: Tracks historical changes in wallet percentages to identify unusual movements.
+3.  Wallet History: Tracks historical changes in wallet percentages to identify unusual movements.
 
-3. Calculates a risk score based on various factors such as wallet concentration, liquidity levels, and burn rates.
+4. Calculates a risk score based on various factors such as wallet concentration, liquidity levels, and burn rates.
 
-4. Data export/import functionality
+5. Data export/import functionality
 
-5. Customizable Parameters: Enables users to input custom wallet percentages and other parameters for manual analysis.
+6. Customizable Parameters: Enables users to input custom wallet percentages and other parameters for manual analysis.
 
 Technical Details
 - Built with:
