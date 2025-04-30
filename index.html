@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tokenomics Risk Visualizer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { 
+      font-family: 'Orbitron', sans-serif; 
+      text-align: center; 
+      background: #1a1a2e; 
+      color: #00ffcc; 
+      position: relative; 
+      min-height: 100vh; 
+      margin: 0; 
+      padding: 20px; 
+    }
+    .background-animation {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      background: url('https://i.imgur.com/8Z5X5qD.gif') repeat;
+      opacity: 0.1;
+      animation: scroll 20s linear infinite;
+    }
+    @keyframes scroll {
+      0% { background-position: 0 0; }
+      100% { background-position: 100px 100px; }
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding-bottom: 40px;
+    }
+    .input-row {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 1200px;
+    }
+    .input-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .button-row {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      width: 100%;
+      max-width: 500px;
+    }
+    .chart-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      width: 100%;
+      max-width: 900px;
+    }
+    canvas { 
+      max-width: 400px; 
+      width: 100%; 
+      background: #fff; 
+      border: 2px solid #ff007a; 
+      box-shadow: 0 0 15px #ff007a; 
+    }
+    input, select, button { 
+      margin: 5px; 
+      padding: 8px; 
+      background: #2a2a3e; 
+      color: #00ffcc; 
+      border: 1px solid #ff007a; 
+      border-radius: 5px; 
+      transition: all 0.3s; 
+      width: 100%; 
+      max-width: 200px; 
+    }
+    input:hover, select:hover, button:hover { 
+      border-color: #00ffcc; 
+      box-shadow: 0 0 10px #00ffcc; 
+    }
+    input.invalid { border-color: #ffcc00; }
+    button { background: #ff007a; color: #fff; }
+    #risks { color: #ff007a; font-weight: bold; }
+    #risks span { margin-right: 5px; }
+    .risk-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+    #tokenName { font-size: 1.5em; margin: 10px; color: #ff007a; text-shadow: 0 0 5px #ff007a; }
+    #riskScore, #rugPullProb { font-size: 1.2em; margin: 10px; color: #00ffcc; }
+    #riskBreakdown { margin: 10px; color: #ffcc00; }
+    @media (max-width: 768px) {
+      .input-row, .button-row { flex-direction: column; }
+      .chart-container { grid-template-columns: 1fr; }
+      input, select, button { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="background-animation"></div>
+  <div class="container">
+    <h1>Tokenomics Risk Visualizer</h1>
+    <input id="tokenAddress" type="text" placeholder="Token Address">
+    <div id="tokenName"></div>
+    <div class="input-row">
+      <div class="input-column">
+        <input id="supply" type="number" placeholder="Total Supply" value="1000000">
+      </div>
+      <div class="input-column">
+        <input id="liquidity" type="number" placeholder="Liquidity %" value="50">
+      </div>
+      <div class="input-column">
+        <input id="wallet1" type="number" placeholder="Wallet 1 %">
+      </div>
+      <div class="input-column">
+        <input id="wallet2" type="number" placeholder="Wallet 2 %">
+      </div>
+      <div class="input-column">
+        <input id="others" type="number" placeholder="Others %">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-column">
+        <input id="newCoin" type="text" placeholder="Wallet % (optional)">
+      </div>
+      <div class="input-column">
+        <input id="burnRate" type="number" placeholder="Burn Rate % (optional)">
+      </div>
+      <div class="input-column">
+        <input id="lockedPercent" type="number" placeholder="Locked % (optional)">
+      </div>
+      <div class="input-column">
+        <input id="unlockDate" type="text" placeholder="Until (MM/DD/YYYY, optional)">
+      </div>
+      <div class="input-column">
+        <input id="sellPercent" type="number" placeholder="Sell % (optional)">
+      </div>
+    </div>
+    <select id="sellWallet">
+      <option value="w1">Wallet 1</option>
+      <option value="w2">Wallet 2</option>
+      <option value="both">Both</option>
+    </select>
+    <label><input id="liveToggle" type="checkbox" checked> Live Updates</label>
+    <label><input id="alertToggle" type="checkbox"> High-Risk Alerts</label>
+    <p>Enter token address for Solscan data or wallet %s manually.</p>
+    <div class="button-row">
+      <button onclick="updateCharts(true)">Manual Update</button>
+      <button onclick="compareRugPull()">Compare to Rug Pull</button>
+    </div>
+    <div class="button-row">
+      <button onclick="importData()">Import Data</button>
+      <button onclick="exportData()">Export Data</button>
+    </div>
+    <button onclick="resetForm()">Reset</button>
+    <div class="chart-container">
+      <canvas id="pieChart"></canvas>
+      <canvas id="lineChart"></canvas>
+      <canvas id="liquidityTimeline"></canvas>
+      <canvas id="walletHistory"></canvas>
+    </div>
+    <div id="risks"></div>
+    <div id="riskScore"></div>
+    <div id="rugPullProb"></div>
+    <div id="riskBreakdown"></div>
+    <div id="events"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const pieCtx = document.getElementById('pieChart').getContext('2d');
+    const lineCtx = document.getElementById('lineChart').getContext('2d');
+    const liqCtx = document.getElementById('liquidityTimeline').getContext('2d');
+    const walletCtx = document.getElementById('walletHistory').getContext('2d');
+    
+    let pieChart = new Chart(pieCtx, {
+      type: 'pie',
+      data: { labels: ['Wallet 1', 'Wallet 2', 'Others'], datasets: [{ data: [0, 0, 0], backgroundColor: ['#ff007a', '#00ffcc', '#ffcc00'] }] },
+      options: { plugins: { title: { display: true, text: 'Wallet Distribution', color: '#00ffcc' }, tooltip: { enabled: true } }, animation: { duration: 1000, easing: 'easeInOutQuad' } }
+    });
+    let lineChart = new Chart(lineCtx, { 
+      type: 'line', 
+      data: { labels: ['T0'], datasets: [{ label: 'Price Impact (%)', data: [100], borderColor: '#00ffcc', fill: false }] }, 
+      options: { plugins: { title: { display: true, text: 'Price Impact Over Time', color: '#00ffcc' }, tooltip: { enabled: true } }, scales: { y: { beginAtZero: true, max: 100 } }, animation: { duration: 1000, easing: 'easeInOutQuad' } } 
+    });
+    let liquidityTimeline = new Chart(liqCtx, { 
+      type: 'line', 
+      data: { labels: ['T0'], datasets: [{ label: 'Liquidity %', data: [50], borderColor: '#ff007a', fill: false }] }, 
+      options: { plugins: { title: { display: true, text: 'Liquidity Timeline', color: '#00ffcc' }, tooltip: { enabled: true } }, scales: { y: { beginAtZero: true, max: 100 } }, animation: { duration: 1000, easing: 'easeInOutQuad' } } 
+    });
+    let walletHistory = new Chart(walletCtx, {
+      type: 'line',
+      data: { labels: ['T0'], datasets: [
+        { label: 'Wallet 1 %', data: [0], borderColor: '#ff007a', fill: false },
+        { label: 'Wallet 2 %', data: [0], borderColor: '#00ffcc', fill: false },
+        { label: 'Others %', data: [0], borderColor: '#ffcc00', fill: false }
+      ]},
+      options: { plugins: { title: { display: true, text: 'Wallet History', color: '#00ffcc' }, tooltip: { enabled: true } }, scales: { y: { beginAtZero: true, max: 100 } }, animation: { duration: 1000, easing: 'easeInOutQuad' } }
+    });
+
+    let liquidityHistory = [50], priceHistory = [100], wallet1History = [0], wallet2History = [0], othersHistory = [0], eventLog = [], timeStep = 0, lastTokenAddress = '';
+
+    async function fetchTokenData(tokenAddress) {
+      try {
+        const meta = await fetch(`https://public-api.solscan.io/token/meta/${tokenAddress}`).then(res => res.json());
+        const holders = await fetch(`https://public-api.solscan.io/token/holders?tokenAddress=${tokenAddress}&limit=10&offset=0`).then(res => res.json());
+        if (meta.message || holders.message) throw new Error('Invalid token address');
+        const supply = meta.supply / 10 ** meta.decimals;
+        const wallets = holders.data.map(h => (h.amount / 10 ** meta.decimals) / supply * 100).sort((a, b) => b - a);
+        const topConcentration = wallets.slice(0, 2).reduce((sum, val) => sum + val, 0);
+        const liquidity = Math.max(10, 100 - topConcentration); // Proxy: less concentration = more liquidity
+        const holderCount = holders.total; // Total unique holders
+        return { name: meta.symbol || 'Unknown', supply, liquidity, wallets, holderCount };
+      } catch (e) {
+        eventLog.push(`${new Date().toLocaleTimeString()} (T${timeStep}): Error fetching Solscan data: ${e.message}`);
+        return { name: 'Error', supply: 1000000, liquidity: 50, wallets: [40, 30, 20, 5, 5], holderCount: 100 };
+      }
+    }
+
+    function validateInputs() {
+      const w1 = Number(document.getElementById('wallet1').value) || 0;
+      const w2 = Number(document.getElementById('wallet2').value) || 0;
+      const others = Number(document.getElementById('others').value) || 0;
+      const total = w1 + w2 + others;
+      document.getElementById('wallet1').classList.toggle('invalid', total > 0 && total !== 100);
+      document.getElementById('wallet2').classList.toggle('invalid', total > 0 && total !== 100);
+      document.getElementById('others').classList.toggle('invalid', total > 0 && total !== 100);
+      return total === 100 || total === 0;
+    }
+
+    async function updateCharts(isManual = false) {
+      const tokenAddress = document.getElementById('tokenAddress').value;
+      const liveToggle = document.getElementById('liveToggle').checked;
+      const alertToggle = document.getElementById('alertToggle').checked;
+      const supplyInput = Number(document.getElementById('supply').value) || 1000000;
+      const newCoin = document.getElementById('newCoin').value;
+      let w1 = Number(document.getElementById('wallet1').value) || 0;
+      let w2 = Number(document.getElementById('wallet2').value) || 0;
+      let others = Number(document.getElementById('others').value) || 0;
+
+      let holderCount = 100; // Default
+      if (tokenAddress && tokenAddress !== lastTokenAddress && isManual && !newCoin) {
+        const tokenData = await fetchTokenData(tokenAddress);
+        document.getElementById('tokenName').innerText = `Token: ${tokenData.name} (${tokenData.holderCount} holders)`;
+        document.getElementById('supply').value = tokenData.supply;
+        document.getElementById('liquidity').value = tokenData.liquidity;
+        const wallets = tokenData.wallets;
+        w1 = wallets[0] || 0;
+        w2 = wallets[1] || 0;
+        others = wallets.slice(2).reduce((sum, val) => sum + val, 0) || 0;
+        document.getElementById('wallet1').value = w1;
+        document.getElementById('wallet2').value = w2;
+        document.getElementById('others').value = others;
+        holderCount = tokenData.holderCount;
+        lastTokenAddress = tokenAddress;
+      } else if (newCoin) {
+        const wallets = newCoin.split(',').map(Number).sort((a, b) => b - a);
+        w1 = wallets[0] || 0;
+        w2 = wallets[1] || 0;
+        others = wallets.slice(2).reduce((sum, val) => sum + val, 0) || 0;
+        document.getElementById('wallet1').value = w1;
+        document.getElementById('wallet2').value = w2;
+        document.getElementById('others').value = others;
+      }
+
+      if (!isManual && tokenAddress && liveToggle) {
+        const shift = Math.random() > 0.5 ? 2 : -2;
+        if (w1 > 10) {
+          w1 = Math.max(0, w1 - shift);
+          others = Math.min(100 - w1 - w2, others + shift);
+          document.getElementById('wallet1').value = w1;
+          document.getElementById('others').value = others;
+          eventLog.push(`${new Date().toLocaleTimeString()} (T${timeStep}): Wallet 1 shifted by ${shift}%`);
+          if (alertToggle && Math.abs(shift) > 1) alert(`Suspicious wallet movement detected: Wallet 1 shifted by ${shift}%`);
+        }
+      }
+
+      const liquidityInput = Number(document.getElementById('liquidity').value) || 50;
+      const burnRate = Number(document.getElementById('burnRate').value) || 0;
+      const lockedPercent = Number(document.getElementById('lockedPercent').value) || 0;
+      const unlockDate = document.getElementById('unlockDate').value || '';
+      const sellPercent = Number(document.getElementById('sellPercent').value) || 10;
+      const sellWallet = document.getElementById('sellWallet').value;
+      const totalPercent = w1 + w2 + others;
+      timeStep++;
+      const timestamp = new Date().toLocaleTimeString();
+
+      let supply = supplyInput, liquidity = liquidityInput;
+      if (!isManual && tokenAddress && liveToggle) {
+        supply += Math.floor(Math.random() * (supply * 0.02) - (supply * 0.01));
+        const liquidityShift = Math.floor(Math.random() * 10 - 5);
+        liquidity += liquidityShift;
+        document.getElementById('supply').value = supply;
+        document.getElementById('liquidity').value = liquidity;
+        eventLog.push(`${timestamp} (T${timeStep}): Live update for ${tokenAddress.slice(0, 6)}...`);
+        if (alertToggle && Math.abs(liquidityShift) > 5) alert(`Significant liquidity change detected: ${liquidityShift}%`);
+      }
+
+      pieChart.data.datasets[0].data = [w1, w2, others];
+      pieChart.update();
+      let sellAmount = sellWallet === 'w1' ? (w1 / 100) * supply * (sellPercent / 100) : sellWallet === 'w2' ? (w2 / 100) * supply * (sellPercent / 100) : ((w1 + w2) / 100) * supply * (sellPercent / 100);
+      priceHistory.push(Math.max(0, priceHistory[priceHistory.length - 1] - (sellAmount / supply * 100)));
+      if (priceHistory.length > 5) priceHistory.shift();
+      lineChart.data.labels = priceHistory.map((_, i) => `T${timeStep - priceHistory.length + i + 1}`);
+      lineChart.data.datasets[0].data = priceHistory;
+      lineChart.update();
+      liquidityHistory.push(liquidity);
+      if (liquidityHistory.length > 5) liquidityHistory.shift();
+      liquidityTimeline.data.labels = liquidityHistory.map((_, i) => `T${timeStep - liquidityHistory.length + i + 1}`);
+      liquidityTimeline.data.datasets[0].data = liquidityHistory;
+      liquidityTimeline.update();
+      wallet1History.push(w1); wallet2History.push(w2); othersHistory.push(others);
+      if (wallet1History.length > 5) { wallet1History.shift(); wallet2History.shift(); othersHistory.shift(); }
+      walletHistory.data.labels = wallet1History.map((_, i) => `T${timeStep - wallet1History.length + i + 1}`);
+      walletHistory.data.datasets[0].data = wallet1History;
+      walletHistory.data.datasets[1].data = wallet2History;
+      walletHistory.data.datasets[2].data = othersHistory;
+      walletHistory.update();
+
+      let risks = [], riskScore = 0, rugPullProb = 0, breakdown = [];
+      if (w1 > 50 || w2 > 50) { risks.push(`<span class="risk-dot" style="background: #ff007a"></span>High concentration`); riskScore += 20; rugPullProb += 15; breakdown.push(`High concentration: +20`); }
+      if (liquidity < 10) { risks.push(`<span class="risk-dot" style="background: #ff007a"></span>Low liquidity`); riskScore += 20; rugPullProb += 20; breakdown.push(`Low liquidity: +20`); }
+      if (totalPercent !== 100 && totalPercent > 0) { risks.push(`<span class="risk-dot" style="background: #ffcc00"></span>Distrib ≠ 100%`); riskScore += 10; breakdown.push(`Distrib ≠ 100%: +10`); }
+      if (burnRate > 10) { risks.push(`<span class="risk-dot" style="background: #ffcc00"></span>High burn rate`); riskScore += 15; breakdown.push(`High burn rate: +15`); }
+      if (lockedPercent > 0 && unlockDate) {
+        const [month, day, year] = unlockDate.split('/');
+        const unlock = new Date(year, month - 1, day);
+        const today = new Date();
+        if ((unlock - today) / (1000 * 60 * 60 * 24) < 7 && lockedPercent > 20) {
+          risks.push(`<span class="risk-dot" style="background: #ff007a"></span>Vesting soon: ${lockedPercent}%`); riskScore += 25; rugPullProb += 10; breakdown.push(`Vesting soon: +25`);
+          if (alertToggle) alert(`Vesting period ending soon: ${lockedPercent}% unlocks on ${unlockDate}`);
+        }
+      }
+      if (sellAmount / supply * 100 > 5) { risks.push(`<span class="risk-dot" style="background: #ff007a"></span>Large sell-off`); riskScore += 20; rugPullProb += 15; breakdown.push(`Large sell-off: +20`); }
+      if (w1 > 80 && liquidity < 20) { risks.push(`<span class="risk-dot" style="background: #ff007a"></span>Extreme rug risk`); riskScore += 30; rugPullProb += 25; breakdown.push(`Extreme rug risk: +30`); }
+      if (w1 > 70 && wallet1History.length > 1 && wallet1History[wallet1History.length - 1] < wallet1History[wallet1History.length - 2]) {
+        risks.push(`<span class="risk-dot" style="background: #ff007a"></span>Insider dump`); riskScore += 25; rugPullProb += 20; breakdown.push(`Insider dump: +25`);
+        if (alertToggle) alert(`Potential insider dump detected: Wallet 1 decreased from ${wallet1History[wallet1History.length - 2]}% to ${w1}%`);
+      }
+      if (holderCount < 50) { risks.push(`<span class="risk-dot" style="background: #ffcc00"></span>Low holder count: ${holderCount}`); riskScore += 15; rugPullProb += 10; breakdown.push(`Low holder count: +15`); }
+      document.getElementById('risks').innerHTML = risks.join(' | ');
+      document.getElementById('riskScore').innerText = `Risk Score: ${Math.min(100, riskScore)}/100`;
+      const similarity = Math.abs(w1 - 80) + Math.abs(w2 - 10) + Math.abs(others - 10);
+      rugPullProb += similarity < 30 ? 20 : 0;
+      if (similarity < 30) breakdown.push(`Rug pull similarity: +20 (prob)`);
+      document.getElementById('rugPullProb').innerText = `Rug Pull Probability: ${Math.min(100, rugPullProb)}%`;
+      document.getElementById('riskBreakdown').innerText = `Breakdown: ${breakdown.join(' | ')}`;
+      document.getElementById('events').innerText = eventLog.join('\n');
+    }
+
+    function compareRugPull() {
+      const w1 = Number(document.getElementById('wallet1').value) || 0;
+      pieChart.data.datasets = [
+        { data: [w1, Number(document.getElementById('wallet2').value), Number(document.getElementById('others').value)], backgroundColor: ['#ff007a', '#00ffcc', '#ffcc00'], label: 'Your Token' },
+        { data: [80, 10, 10], backgroundColor: ['#ff66aa', '#66ffcc', '#ffcc66'], label: 'Rug Pull' }
+      ];
+      pieChart.update();
+    }
+
+    function exportData() {
+      const data = {
+        tokenAddress: document.getElementById('tokenAddress').value,
+        tokenName: document.getElementById('tokenName').innerText.replace('Token: ', ''),
+        supply: Number(document.getElementById('supply').value),
+        wallets: { wallet1: Number(document.getElementById('wallet1').value), wallet2: Number(document.getElementById('wallet2').value), others: Number(document.getElementById('others').value) },
+        liquidity: Number(document.getElementById('liquidity').value),
+        burnRate: Number(document.getElementById('burnRate').value),
+        lockedPercent: Number(document.getElementById('lockedPercent').value),
+        unlockDate: document.getElementById('unlockDate').value,
+        sellPercent: Number(document.getElementById('sellPercent').value),
+        sellWallet: document.getElementById('sellWallet').value
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'tokenomics_data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importData() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const data = JSON.parse(event.target.result);
+          document.getElementById('tokenAddress').value = data.tokenAddress || '';
+          document.getElementById('tokenName').innerText = data.tokenName ? `Token: ${data.tokenName}` : '';
+          document.getElementById('supply').value = data.supply || '';
+          document.getElementById('liquidity').value = data.liquidity || '';
+          document.getElementById('wallet1').value = data.wallets?.wallet1 || '';
+          document.getElementById('wallet2').value = data.wallets?.wallet2 || '';
+          document.getElementById('others').value = data.wallets?.others || '';
+          document.getElementById('newCoin').value = '';
+          document.getElementById('burnRate').value = data.burnRate || '';
+          document.getElementById('lockedPercent').value = data.lockedPercent || '';
+          document.getElementById('unlockDate').value = data.unlockDate || '';
+          document.getElementById('sellPercent').value = data.sellPercent || '';
+          document.getElementById('sellWallet').value = data.sellWallet || 'w1';
+          updateCharts(true);
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    }
+
+    function resetForm() {
+      document.getElementById('tokenAddress').value = '';
+      document.getElementById('tokenName').innerText = '';
+      document.getElementById('supply').value = '1000000';
+      document.getElementById('liquidity').value = '50';
+      document.getElementById('wallet1').value = '';
+      document.getElementById('wallet2').value = '';
+      document.getElementById('others').value = '';
+      document.getElementById('newCoin').value = '';
+      document.getElementById('burnRate').value = '';
+      document.getElementById('lockedPercent').value = '';
+      document.getElementById('unlockDate').value = '';
+      document.getElementById('sellPercent').value = '';
+      document.getElementById('sellWallet').value = 'w1';
+      document.getElementById('alertToggle').checked = false;
+      liquidityHistory = [50]; priceHistory = [100]; wallet1History = [0]; wallet2History = [0]; othersHistory = [0];
+      eventLog = []; timeStep = 0; lastTokenAddress = '';
+      updateCharts(true);
+    }
+
+    setInterval(() => {
+      if (document.getElementById('liveToggle').checked) {
+        updateCharts(false);
+      }
+    }, 5000);
+
+    document.querySelectorAll('#wallet1, #wallet2, #others').forEach(input => {
+      input.addEventListener('input', validateInputs);
+    });
+  </script>
+</body>
+</html>
